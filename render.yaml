@@ -1,0 +1,12 @@
+services:
+  # 백엔드 API 서버
+  - type: web
+    name: sermon-slide-generator
+    env: python
+    region: frankfurt  # 독일에서 가까운 서버
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0

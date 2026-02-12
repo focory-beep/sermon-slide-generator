@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>예배 슬라이드 생성기 | Sermon Slide Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .section-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .scripture-item {
+            border-left: 4px solid #3b82f6;
+            padding-left: 16px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8">
+    <div class="container mx-auto max-w-6xl px-4">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">📖 예배 슬라이드 생성기</h1>
+            <p class="text-gray-600">성경 본문과 예배 순서를 입력하면 자동으로 PPT를 생성합니다</p>
+            <p class="text-sm text-gray-500 mt-1">Korean • English • Deutsch</p>
+        </div>
+
+        <!-- Main Form -->
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Left Column: Basic Info -->
+            <div>
+                <div class="section-card">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700">📅 기본 정보</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">예배 제목</label>
+                            <input type="text" id="title" value="주일 예배"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">날짜</label>
+                            <input type="text" id="date"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Worship Order -->
+                <div class="section-card">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700">📋 예배 순서</h2>
+                    <div id="worship-orders-container" class="space-y-3">
+                        <!-- 예배 순서 항목들이 여기에 추가됨 -->
+                    </div>
+                    <button onclick="addWorshipOrder()"
+                        class="mt-3 w-full py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition">
+                        + 예배 순서 추가
+                    </button>
+                </div>
+
+                <!-- Design Settings -->
+                <div class="section-card">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700">🎨 디자인 설정</h2>
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm text-gray-700 mb-1">폰트</label>
+                                <select id="font-name" class="w-full px-3 py-2 border rounded-lg text-sm">
+                                    <option value="맑은 고딕">맑은 고딕</option>
+                                    <option value="나눔고딕">나눔고딕</option>
+                                    <option value="Arial">Arial</option>
+                                    <option value="Times New Roman">Times New Roman</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700 mb-1">본문 크기</label>
+                                <input type="number" id="font-size" value="32" min="20" max="50"
+                                    class="w-full px-3 py-2 border rounded-lg text-sm">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-sm text-gray-700 mb-1">배경색</label>
+                                <input type="color" id="bg-color" value="#FFFFFF"
+                                    class="w-full h-10 rounded cursor-pointer">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700 mb-1">본문색</label>
+                                <input type="color" id="text-color" value="#000000"
+                                    class="w-full h-10 rounded cursor-pointer">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-700 mb-1">제목색</label>
+                                <input type="color" id="title-color" value="#1a365d"
+                                    class="w-full h-10 rounded cursor-pointer">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Scripture Verses -->
+            <div>
+                <div class="section-card">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700">📖 성경 본문</h2>
+                    <div id="scriptures-container" class="space-y-4">
+                        <!-- 성경 구절들이 여기에 추가됨 -->
+                    </div>
+                    <button onclick="addScripture()"
+                        class="mt-3 w-full py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition">
+                        + 성경 본문 추가
+                    </button>
+                </div>
+
+                <!-- Preview/Info -->
+                <div class="section-card bg-blue-50">
+                    <h3 class="font-semibold text-blue-900 mb-2">💡 사용 팁</h3>
+                    <ul class="text-sm text-blue-800 space-y-1">
+                        <li>• 긴 본문은 자동으로 여러 슬라이드로 나뉩니다</li>
+                        <li>• 여러 번역본을 동시에 추가할 수 있습니다</li>
+                        <li>• 디자인은 언제든 변경 가능합니다</li>
+                        <li>• 생성된 PPT는 바로 다운로드됩니다</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Generate Button -->
+        <div class="mt-6 text-center">
+            <button onclick="generatePresentation()"
+                class="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition duration-200">
+                🎯 PPT 생성하기
+            </button>
+            <div id="status-message" class="mt-4 text-sm"></div>
+        </div>
+    </div>
+
+    <script>
+        // 현재 날짜를 한국어 형식으로 설정
+        document.getElementById('date').value = new Date().toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        // API 엔드포인트 (개발 환경에 맞게 수정)
+        const API_URL = 'http://localhost:8000';
+
+        // 예배 순서 추가
+        let worshipOrderCount = 0;
+        function addWorshipOrder() {
+            const container = document.getElementById('worship-orders-container');
+            const id = ++worshipOrderCount;
+
+            const div = document.createElement('div');
+            div.className = 'flex gap-2';
+            div.innerHTML = `
+                <input type="text" id="order-title-${id}" placeholder="예: 찬송, 기도, 설교..."
+                    class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                <input type="text" id="order-detail-${id}" placeholder="상세 (선택)"
+                    class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                <button onclick="this.parentElement.remove()"
+                    class="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 text-sm">
+                    삭제
+                </button>
+            `;
+            container.appendChild(div);
+        }
+
+        // 기본 예배 순서 추가
+        ['예배로의 부름', '찬송', '기도', '성경봉독', '설교', '헌금', '축도'].forEach(() => addWorshipOrder());
+
+        // 성경 본문 추가
+        let scriptureCount = 0;
+        function addScripture() {
+            const container = document.getElementById('scriptures-container');
+            const id = ++scriptureCount;
+
+            const div = document.createElement('div');
+            div.className = 'scripture-item bg-gray-50 p-4 rounded-lg';
+            div.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <h4 class="font-semibold text-gray-700">성경 본문 #${id}</h4>
+                    <button onclick="this.closest('.scripture-item').remove()"
+                        class="text-red-500 hover:text-red-700 text-sm">
+                        ✕ 삭제
+                    </button>
+                </div>
+                <div class="space-y-2">
+                    <input type="text" id="scripture-ref-${id}" placeholder="예: 요한복음 3:16"
+                        class="w-full px-3 py-2 border rounded-lg text-sm">
+                    <select id="scripture-trans-${id}" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <option value="개역개정">개역개정 (Korean)</option>
+                        <option value="공동번역">공동번역 (Korean)</option>
+                        <option value="새번역">새번역 (Korean)</option>
+                        <option value="NIV">NIV (English)</option>
+                        <option value="ESV">ESV (English)</option>
+                        <option value="KJV">KJV (English)</option>
+                        <option value="Luther 1984">Luther 1984 (Deutsch)</option>
+                        <option value="Luther 2017">Luther 2017 (Deutsch)</option>
+                    </select>
+                    <textarea id="scripture-text-${id}" placeholder="성경 본문을 입력하세요..."
+                        rows="4" class="w-full px-3 py-2 border rounded-lg text-sm"></textarea>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        // 기본 성경 본문 하나 추가
+        addScripture();
+
+        // PPT 생성
+        async function generatePresentation() {
+            const statusMsg = document.getElementById('status-message');
+            statusMsg.className = 'mt-4 text-sm text-blue-600';
+            statusMsg.textContent = '⏳ PPT를 생성하는 중입니다...';
+
+            try {
+                // 예배 순서 수집
+                const worshipOrders = [];
+                for (let i = 1; i <= worshipOrderCount; i++) {
+                    const titleEl = document.getElementById(`order-title-${i}`);
+                    const detailEl = document.getElementById(`order-detail-${i}`);
+                    if (titleEl && titleEl.value.trim()) {
+                        worshipOrders.push({
+                            title: titleEl.value.trim(),
+                            detail: detailEl?.value.trim() || null
+                        });
+                    }
+                }
+
+                // 성경 본문 수집
+                const scriptures = [];
+                for (let i = 1; i <= scriptureCount; i++) {
+                    const refEl = document.getElementById(`scripture-ref-${i}`);
+                    const transEl = document.getElementById(`scripture-trans-${i}`);
+                    const textEl = document.getElementById(`scripture-text-${i}`);
+
+                    if (refEl && textEl && refEl.value.trim() && textEl.value.trim()) {
+                        scriptures.push({
+                            reference: refEl.value.trim(),
+                            translation: transEl.value,
+                            text: textEl.value.trim()
+                        });
+                    }
+                }
+
+                // 요청 데이터 구성
+                const requestData = {
+                    title: document.getElementById('title').value,
+                    date: document.getElementById('date').value,
+                    worship_orders: worshipOrders,
+                    scriptures: scriptures,
+                    config: {
+                        font_name: document.getElementById('font-name').value,
+                        font_size: parseInt(document.getElementById('font-size').value),
+                        title_font_size: parseInt(document.getElementById('font-size').value) + 12,
+                        background_color: document.getElementById('bg-color').value,
+                        text_color: document.getElementById('text-color').value,
+                        title_color: document.getElementById('title-color').value,
+                        max_chars_per_slide: 200
+                    }
+                };
+
+                // API 호출
+                const response = await fetch(`${API_URL}/generate-presentation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                // 파일 다운로드
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${requestData.title}_${requestData.date}.pptx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                statusMsg.className = 'mt-4 text-sm text-green-600 font-semibold';
+                statusMsg.textContent = '✅ PPT가 성공적으로 생성되었습니다!';
+
+            } catch (error) {
+                console.error('Error:', error);
+                statusMsg.className = 'mt-4 text-sm text-red-600';
+                statusMsg.textContent = `❌ 오류가 발생했습니다: ${error.message}. 서버가 실행 중인지 확인해주세요.`;
+            }
+        }
+    </script>
+</body>
+</html>
