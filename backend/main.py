@@ -11,7 +11,7 @@ from pptx.dml.color import RGBColor
 import os
 import tempfile
 from datetime import datetime
-from bible_parser import parse_bible_reference
+from .bible_parser import parse_bible_reference
 
 app = FastAPI(title="Sermon Slide Generator")
 
@@ -298,3 +298,4 @@ async def parse_reference(reference: str, language: str = "korean"):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+Page_Down
