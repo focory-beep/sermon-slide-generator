@@ -42,15 +42,15 @@ class WorshipOrder(BaseModel):
     detail: Optional[str] = None
 
 class SlideConfig(BaseModel):
-    """슬라이드 디자인 설정"""
+    """슬라이드 디자인 설정 - 교회 예시 스타일"""
     font_name: str = "Noto Sans KR"  # Google Sans KR 스타일의 폰트
-    font_size: int = 28
-    title_font_size: int = 40
+    font_size: int = 32  # 본문 폰트 크기 증가
+    title_font_size: int = 44
     background_color: str = "#FFFFFF"
-    text_color: str = "#333333"
-    title_color: str = "#1a365d"
-    max_lines_per_slide: int = 8  # 슬라이드당 최대 줄 수
-    chars_per_line: int = 40  # 줄당 최대 글자 수 (approximate)
+    text_color: str = "#000000"  # 더 진한 검정색
+    title_color: str = "#000000"
+    max_lines_per_slide: int = 10  # 슬라이드당 최대 줄 수 증가
+    chars_per_line: int = 50  # 줄당 최대 글자 수 증가
 
 class PresentationRequest(BaseModel):
     """PPT 생성 요청"""
@@ -189,9 +189,9 @@ def get_reference_position(position: str, slide_width=Inches(10), slide_height=I
 
 def add_scripture_slides(prs: Presentation, scripture: ScriptureVerse, config: SlideConfig, auto_parse: bool = True):
     """
-    성경 구절 슬라이드 추가
-    - 레퍼런스는 작게 4곳 중 하나에 위치
-    - 본문은 중앙에 크고 보기 좋게 배치
+    성경 구절 슬라이드 추가 - 교회 예시 스타일
+    - 레퍼런스는 축약형으로 간결하게 (예: [마5:13])
+    - 본문은 왼쪽 정렬로 깔끔하게 배치
     - 긴 본문은 자동으로 다음 슬라이드로 분할
     """
     # 성경 참조 파싱 (자동 매핑)
@@ -205,7 +205,17 @@ def add_scripture_slides(prs: Presentation, scripture: ScriptureVerse, config: S
                 lang = "german"
 
             parsed = parse_bible_reference(scripture.reference, lang)
-            reference_display = parsed.get("formatted", scripture.reference)
+            # 교회 예시 스타일: 축약형 사용 (마5:13)
+            book_abbrev = parsed.get("book_abbrev", scripture.reference)
+            chapter = parsed.get("chapter")
+            verses = parsed.get("verses")
+
+            if book_abbrev and chapter:
+                reference_display = f"{book_abbrev}{chapter}"
+                if verses:
+                    reference_display += f":{verses}"
+            else:
+                reference_display = scripture.reference
         except:
             reference_display = scripture.reference
 
@@ -228,12 +238,11 @@ def add_scripture_slides(prs: Presentation, scripture: ScriptureVerse, config: S
         # 성경 참조 위치 계산
         ref_left, ref_top = get_reference_position(scripture.reference_position)
 
-        # 성경 참조 텍스트박스 (작게, 선택한 위치에)
+        # 성경 참조 텍스트박스 - 교회 예시 스타일: 간결하게
         reference_text = f"[{reference_display}]"
-        if len(text_chunks) > 1:
-            reference_text += f" ({i+1}/{len(text_chunks)})"
+        # 페이지 번호는 표시하지 않음 (교회 예시와 동일)
 
-        ref_box = slide.shapes.add_textbox(ref_left, ref_top, Inches(3), Inches(0.6))
+        ref_box = slide.shapes.add_textbox(ref_left, ref_top, Inches(4), Inches(0.8))
         ref_frame = ref_box.text_frame
         ref_frame.text = reference_text
 
@@ -243,41 +252,28 @@ def add_scripture_slides(prs: Presentation, scripture: ScriptureVerse, config: S
         else:
             ref_frame.paragraphs[0].alignment = PP_ALIGN.LEFT
 
-        ref_frame.paragraphs[0].font.size = Pt(18)  # 작게
-        ref_frame.paragraphs[0].font.bold = False
+        ref_frame.paragraphs[0].font.size = Pt(24)  # 조금 더 크게
+        ref_frame.paragraphs[0].font.bold = True  # 볼드체
         ref_frame.paragraphs[0].font.name = config.font_name
-        ref_frame.paragraphs[0].font.color.rgb = RGBColor(100, 100, 100)  # 회색
+        ref_frame.paragraphs[0].font.color.rgb = hex_to_rgb(config.text_color)
 
-        # 본문 텍스트박스 (중앙에 크게)
-        content_left = Inches(1.2)
-        content_top = Inches(2)
-        content_width = Inches(7.6)
-        content_height = Inches(4)
+        # 본문 텍스트박스 - 교회 예시 스타일: 왼쪽 정렬
+        content_left = Inches(0.8)
+        content_top = Inches(1.8)
+        content_width = Inches(8.4)
+        content_height = Inches(5)
 
         content_box = slide.shapes.add_textbox(content_left, content_top, content_width, content_height)
         content_frame = content_box.text_frame
         content_frame.word_wrap = True
-        content_frame.vertical_anchor = 1  # 중앙 정렬 (MSO_ANCHOR.MIDDLE)
         content_frame.text = chunk
 
-        # 본문 스타일
-        content_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
+        # 본문 스타일 - 교회 예시: 왼쪽 정렬
+        content_frame.paragraphs[0].alignment = PP_ALIGN.LEFT
         content_frame.paragraphs[0].font.size = Pt(config.font_size)
         content_frame.paragraphs[0].font.name = config.font_name
         content_frame.paragraphs[0].font.color.rgb = hex_to_rgb(config.text_color)
-        content_frame.paragraphs[0].line_spacing = 1.8
-
-        # 번역본 표시 (작게, 하단 우측)
-        if "bottom" not in scripture.reference_position or "right" not in scripture.reference_position:
-            # 번역본 위치가 레퍼런스와 겹치지 않도록
-            trans_box = slide.shapes.add_textbox(Inches(7.5), Inches(6.8), Inches(2), Inches(0.4))
-            trans_frame = trans_box.text_frame
-            trans_frame.text = scripture.translation
-            trans_frame.paragraphs[0].alignment = PP_ALIGN.RIGHT
-            trans_frame.paragraphs[0].font.size = Pt(12)
-            trans_frame.paragraphs[0].font.italic = True
-            trans_frame.paragraphs[0].font.name = config.font_name
-            trans_frame.paragraphs[0].font.color.rgb = RGBColor(150, 150, 150)
+        content_frame.paragraphs[0].line_spacing = 1.5
 
 @app.post("/generate-presentation")
 async def generate_presentation(request: PresentationRequest):
