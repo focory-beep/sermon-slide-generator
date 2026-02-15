@@ -14,8 +14,15 @@ from datetime import datetime
 from .bible_parser import parse_bible_reference
 from .bible_loader import get_bible_loader
 from .hymn_loader import get_hymn_loader
+from .startup import initialize as startup_initialize
 
 app = FastAPI(title="Sermon Slide Generator v3")
+
+# 서버 시작 시 Reference 데이터 다운로드
+@app.on_event("startup")
+async def startup_event():
+    """서버 시작 시 초기화 작업"""
+    startup_initialize()
 
 # 정적 파일 서빙 (프론트엔드)
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")

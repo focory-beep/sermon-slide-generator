@@ -16,9 +16,9 @@ class HymnLoader:
             hymn_data_path: Reference/새찬송가🎼 폴더 경로
         """
         if hymn_data_path is None:
-            # 기본 경로 설정
+            # 기본 경로 설정 (backend/Reference/)
             current_dir = os.path.dirname(__file__)
-            base_path = os.path.join(current_dir, "..", "..", "Reference")
+            base_path = os.path.join(current_dir, "Reference")
 
             # 새찬송가🎼 폴더 찾기
             if os.path.exists(base_path):

@@ -66,9 +66,9 @@ class BibleLoader:
             bible_data_path: Reference/개역개정📖 폴더 경로
         """
         if bible_data_path is None:
-            # 기본 경로 설정
+            # 기본 경로 설정 (backend/Reference/)
             current_dir = os.path.dirname(__file__)
-            bible_data_path = os.path.join(current_dir, "..", "..", "Reference")
+            bible_data_path = os.path.join(current_dir, "Reference")
 
             # 개역개정📖 폴더 찾기
             if os.path.exists(bible_data_path):
