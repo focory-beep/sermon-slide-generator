@@ -12,6 +12,8 @@ import os
 import tempfile
 from datetime import datetime
 from .bible_parser import parse_bible_reference
+from .bible_loader import get_bible_loader
+from .hymn_loader import get_hymn_loader
 
 app = FastAPI(title="Sermon Slide Generator v3")
 
@@ -52,12 +54,17 @@ class SlideConfig(BaseModel):
     max_lines_per_slide: int = 10  # 슬라이드당 최대 줄 수 증가
     chars_per_line: int = 50  # 줄당 최대 글자 수 증가
 
+class HymnRequest(BaseModel):
+    """찬송가 요청 모델"""
+    hymn_number: int
+
 class PresentationRequest(BaseModel):
     """PPT 생성 요청"""
     title: str = "주일 예배"
     date: str = datetime.now().strftime("%Y년 %m월 %d일")
     worship_orders: List[WorshipOrder] = []
     scriptures: List[ScriptureVerse] = []
+    hymns: List[HymnRequest] = []  # 찬송가 목록
     config: SlideConfig = SlideConfig()
     auto_parse_references: bool = True  # 자동 성경 참조 파싱
 
@@ -136,6 +143,115 @@ def add_single_worship_order_slide(prs: Presentation, order: WorshipOrder, confi
         detail_frame.paragraphs[0].font.size = Pt(config.font_size - 4)
         detail_frame.paragraphs[0].font.name = config.font_name
         detail_frame.paragraphs[0].font.color.rgb = hex_to_rgb(config.text_color)
+
+def add_hymn_slides(prs: Presentation, hymn_number: int, config: SlideConfig):
+    """
+    찬송가 슬라이드 추가
+    - 제목 슬라이드 (찬송가 번호 + 제목)
+    - 각 절마다 별도 슬라이드
+    - 후렴이 있으면 후렴 슬라이드 추가
+    """
+    loader = get_hymn_loader()
+    hymn_data = loader.load_hymn(hymn_number)
+
+    if not hymn_data:
+        # 찬송가 데이터가 없으면 기본 슬라이드
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        background = slide.background
+        fill = background.fill
+        fill.solid()
+        fill.fore_color.rgb = hex_to_rgb(config.background_color)
+
+        title_box = slide.shapes.add_textbox(Inches(1), Inches(3), Inches(8), Inches(1.5))
+        title_frame = title_box.text_frame
+        title_frame.text = f"찬송가 {hymn_number}장"
+        title_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
+        title_frame.paragraphs[0].font.size = Pt(config.title_font_size)
+        title_frame.paragraphs[0].font.bold = True
+        title_frame.paragraphs[0].font.name = config.font_name
+        title_frame.paragraphs[0].font.color.rgb = hex_to_rgb(config.title_color)
+        return
+
+    # 1. 제목 슬라이드
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    background = slide.background
+    fill = background.fill
+    fill.solid()
+    fill.fore_color.rgb = hex_to_rgb(config.background_color)
+
+    # 찬송가 번호
+    num_box = slide.shapes.add_textbox(Inches(1), Inches(2.5), Inches(8), Inches(0.8))
+    num_frame = num_box.text_frame
+    num_frame.text = f"찬송가 {hymn_number}장"
+    num_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
+    num_frame.paragraphs[0].font.size = Pt(config.font_size)
+    num_frame.paragraphs[0].font.name = config.font_name
+    num_frame.paragraphs[0].font.color.rgb = RGBColor(100, 100, 100)
+
+    # 제목
+    title_box = slide.shapes.add_textbox(Inches(1), Inches(3.5), Inches(8), Inches(1))
+    title_frame = title_box.text_frame
+    title_frame.text = hymn_data['title']
+    title_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
+    title_frame.paragraphs[0].font.size = Pt(config.title_font_size)
+    title_frame.paragraphs[0].font.bold = True
+    title_frame.paragraphs[0].font.name = config.font_name
+    title_frame.paragraphs[0].font.color.rgb = hex_to_rgb(config.title_color)
+
+    # 2. 각 절 슬라이드
+    for idx, verse in enumerate(hymn_data['verses'], 1):
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        background = slide.background
+        fill = background.fill
+        fill.solid()
+        fill.fore_color.rgb = hex_to_rgb(config.background_color)
+
+        # 절 번호 (작게 상단)
+        verse_num_box = slide.shapes.add_textbox(Inches(1), Inches(0.8), Inches(8), Inches(0.5))
+        verse_num_frame = verse_num_box.text_frame
+        verse_num_frame.text = f"{idx}절"
+        verse_num_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
+        verse_num_frame.paragraphs[0].font.size = Pt(20)
+        verse_num_frame.paragraphs[0].font.name = config.font_name
+        verse_num_frame.paragraphs[0].font.color.rgb = RGBColor(120, 120, 120)
+
+        # 가사
+        lyrics_box = slide.shapes.add_textbox(Inches(1.5), Inches(2), Inches(7), Inches(4.5))
+        lyrics_frame = lyrics_box.text_frame
+        lyrics_frame.text = verse
+        lyrics_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
+        lyrics_frame.paragraphs[0].font.size = Pt(config.font_size - 4)
+        lyrics_frame.paragraphs[0].font.name = config.font_name
+        lyrics_frame.paragraphs[0].font.color.rgb = hex_to_rgb(config.text_color)
+        lyrics_frame.paragraphs[0].line_spacing = 1.8
+
+    # 3. 후렴 슬라이드 (있는 경우)
+    if hymn_data.get('chorus'):
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        background = slide.background
+        fill = background.fill
+        fill.solid()
+        fill.fore_color.rgb = hex_to_rgb(config.background_color)
+
+        # 후렴 제목
+        chorus_title_box = slide.shapes.add_textbox(Inches(1), Inches(0.8), Inches(8), Inches(0.5))
+        chorus_title_frame = chorus_title_box.text_frame
+        chorus_title_frame.text = "후렴"
+        chorus_title_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
+        chorus_title_frame.paragraphs[0].font.size = Pt(24)
+        chorus_title_frame.paragraphs[0].font.bold = True
+        chorus_title_frame.paragraphs[0].font.name = config.font_name
+        chorus_title_frame.paragraphs[0].font.color.rgb = hex_to_rgb(config.title_color)
+
+        # 후렴 가사
+        chorus_box = slide.shapes.add_textbox(Inches(1.5), Inches(2), Inches(7), Inches(4.5))
+        chorus_frame = chorus_box.text_frame
+        chorus_frame.text = hymn_data['chorus']
+        chorus_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
+        chorus_frame.paragraphs[0].font.size = Pt(config.font_size - 4)
+        chorus_frame.paragraphs[0].font.name = config.font_name
+        chorus_frame.paragraphs[0].font.color.rgb = hex_to_rgb(config.text_color)
+        chorus_frame.paragraphs[0].line_spacing = 1.8
 
 def split_scripture_text(text: str, max_lines: int, chars_per_line: int) -> List[str]:
     """
@@ -294,6 +410,10 @@ async def generate_presentation(request: PresentationRequest):
         for scripture in request.scriptures:
             add_scripture_slides(prs, scripture, request.config, request.auto_parse_references)
 
+        # 4. 찬송가 슬라이드들
+        for hymn in request.hymns:
+            add_hymn_slides(prs, hymn.hymn_number, request.config)
+
         # 임시 파일로 저장
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pptx')
         prs.save(temp_file.name)
@@ -373,6 +493,84 @@ async def auto_parse_scripture(data: dict):
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/fetch-scripture")
+async def fetch_scripture(data: dict):
+    """
+    성경 본문 자동 로드 API - 레퍼런스만 입력하면 본문을 가져옴
+    입력: {"reference": "출24:12-18"}
+    출력: {"reference": "출24:12-18", "text": "여호와께서 모세에게 이르시되...", "success": true}
+    """
+    try:
+        reference = data.get("reference", "")
+        if not reference:
+            raise HTTPException(status_code=400, detail="Reference is required")
+
+        # 성경 본문 로드
+        loader = get_bible_loader()
+        text = loader.load_scripture(reference)
+
+        if text:
+            return {
+                "success": True,
+                "reference": reference,
+                "text": text
+            }
+        else:
+            return {
+                "success": False,
+                "reference": reference,
+                "error": "해당 구절을 찾을 수 없습니다. Reference 데이터가 설치되어 있는지 확인하세요."
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "reference": data.get("reference", ""),
+            "error": str(e)
+        }
+
+@app.post("/fetch-hymn")
+async def fetch_hymn(data: dict):
+    """
+    찬송가 데이터 자동 로드 API - 찬송가 번호로 제목과 가사 가져옴
+    입력: {"hymn_number": 1}
+    출력: {"number": 1, "title": "만복의 근원 하나님", "verses": [...], "success": true}
+    """
+    try:
+        hymn_number = data.get("hymn_number")
+        if not hymn_number:
+            raise HTTPException(status_code=400, detail="Hymn number is required")
+
+        hymn_number = int(hymn_number)
+        if hymn_number < 1 or hymn_number > 645:
+            raise HTTPException(status_code=400, detail="Hymn number must be between 1 and 645")
+
+        # 찬송가 데이터 로드
+        loader = get_hymn_loader()
+        hymn_data = loader.load_hymn(hymn_number)
+
+        if hymn_data:
+            return {
+                "success": True,
+                **hymn_data
+            }
+        else:
+            return {
+                "success": False,
+                "hymn_number": hymn_number,
+                "error": "해당 찬송가를 찾을 수 없습니다. Reference 데이터가 설치되어 있는지 확인하세요."
+            }
+    except ValueError:
+        return {
+            "success": False,
+            "error": "찬송가 번호는 숫자여야 합니다."
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "hymn_number": data.get("hymn_number"),
+            "error": str(e)
+        }
 
 if __name__ == "__main__":
     import uvicorn
