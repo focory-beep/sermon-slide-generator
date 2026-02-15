@@ -206,6 +206,30 @@
                     </div>
                 </div>
 
+                <!-- 찬송가 Section -->
+                <div class="card">
+                    <div class="flex justify-between items-center mb-5">
+                        <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                            🎵 찬송가
+                            <span class="text-sm font-normal text-gray-500">(선택사항)</span>
+                        </h2>
+                        <button onclick="addHymn()"
+                            class="px-6 py-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition font-medium shadow-md">
+                            + 찬송가 추가
+                        </button>
+                    </div>
+
+                    <div class="bg-purple-50 border-l-4 border-purple-400 p-4 rounded-lg mb-5">
+                        <p class="text-sm text-purple-800">
+                            💡 <strong>팁:</strong> 찬송가 번호만 입력하면 제목과 가사가 자동으로 슬라이드에 추가됩니다!
+                        </p>
+                    </div>
+
+                    <div id="hymns-container" class="space-y-5">
+                        <!-- 찬송가들이 여기에 추가됨 -->
+                    </div>
+                </div>
+
                 <!-- Generate Button -->
                 <div class="mt-6">
                     <button onclick="generatePresentation()"
@@ -228,6 +252,7 @@
         const API_URL = 'http://localhost:8000';
         let scriptureCount = 0;
         let orderCount = 0;
+        let hymnCount = 0;
 
         // 날짜 초기화
         document.addEventListener('DOMContentLoaded', () => {
@@ -277,9 +302,15 @@
                     <div class="grid md:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">📌 성경 참조 (약어 가능)</label>
-                            <input type="text" placeholder="예: 마5:13, 요3:16, 창1:1"
-                                class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg scripture-reference focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <p class="text-xs text-gray-500 mt-1">자동으로 파싱됩니다</p>
+                            <div class="flex gap-2">
+                                <input type="text" placeholder="예: 출24:12-18, 고전2:1-5"
+                                    class="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg scripture-reference focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <button onclick="fetchScripture(this)"
+                                    class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm font-medium shadow whitespace-nowrap">
+                                    📖 본문 가져오기
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">💡 레퍼런스만 입력하고 "본문 가져오기" 버튼을 누르면 자동으로 성경 본문이 입력됩니다</p>
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">🌍 번역본</label>
@@ -326,12 +357,196 @@
             container.appendChild(scriptureDiv);
         }
 
+        // 찬송가 추가
+        function addHymn() {
+            hymnCount++;
+            const container = document.getElementById('hymns-container');
+            const hymnDiv = document.createElement('div');
+            hymnDiv.className = 'scripture-card';  // 같은 스타일 사용
+            hymnDiv.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">🎵 찬송가 #${hymnCount}</h3>
+                    <button onclick="this.parentElement.parentElement.remove()"
+                        class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm font-medium shadow">
+                        삭제
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">🎼 찬송가 번호 (1-645)</label>
+                        <div class="flex gap-2">
+                            <input type="number" min="1" max="645" placeholder="예: 1, 23, 450"
+                                class="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg hymn-number focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                            <button onclick="fetchHymn(this)"
+                                class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm font-medium shadow whitespace-nowrap">
+                                🎵 가사 미리보기
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">💡 번호만 입력하면 자동으로 제목과 가사가 슬라이드에 추가됩니다</p>
+                    </div>
+
+                    <div class="hymn-preview hidden">
+                        <div class="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
+                            <h4 class="text-lg font-bold text-purple-900 mb-2 hymn-title"></h4>
+                            <div class="hymn-verses text-sm text-gray-700 space-y-3 max-h-60 overflow-y-auto"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(hymnDiv);
+        }
+
+        // 찬송가 데이터 가져오기
+        async function fetchHymn(button) {
+            const hymnDiv = button.closest('.scripture-card');
+            const numberInput = hymnDiv.querySelector('.hymn-number');
+            const previewDiv = hymnDiv.querySelector('.hymn-preview');
+            const titleEl = hymnDiv.querySelector('.hymn-title');
+            const versesEl = hymnDiv.querySelector('.hymn-verses');
+            const hymnNumber = parseInt(numberInput.value);
+
+            if (!hymnNumber || hymnNumber < 1 || hymnNumber > 645) {
+                alert('찬송가 번호를 1-645 사이로 입력해주세요');
+                return;
+            }
+
+            // 버튼 비활성화 및 로딩 표시
+            button.disabled = true;
+            const originalText = button.textContent;
+            button.textContent = '⏳ 가져오는 중...';
+
+            try {
+                const response = await fetch(`${API_URL}/fetch-hymn`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ hymn_number: hymnNumber })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // 제목 표시
+                    titleEl.textContent = `${result.number}장 - ${result.title}`;
+
+                    // 가사 표시
+                    versesEl.innerHTML = '';
+                    result.verses.forEach((verse, idx) => {
+                        const verseDiv = document.createElement('div');
+                        verseDiv.className = 'border-l-2 border-purple-300 pl-3';
+                        verseDiv.innerHTML = `<strong>${idx + 1}절</strong><br>${verse.replace(/\n/g, '<br>')}`;
+                        versesEl.appendChild(verseDiv);
+                    });
+
+                    if (result.chorus) {
+                        const chorusDiv = document.createElement('div');
+                        chorusDiv.className = 'border-l-2 border-purple-500 pl-3 bg-purple-100';
+                        chorusDiv.innerHTML = `<strong>후렴</strong><br>${result.chorus.replace(/\n/g, '<br>')}`;
+                        versesEl.appendChild(chorusDiv);
+                    }
+
+                    // 미리보기 표시
+                    previewDiv.classList.remove('hidden');
+                    numberInput.style.borderColor = '#a855f7';  // 보라색
+                    showToast('✅ 찬송가 정보를 가져왔습니다!', 'success');
+
+                    // 2초 후 테두리 색상 원래대로
+                    setTimeout(() => {
+                        numberInput.style.borderColor = '';
+                    }, 2000);
+                } else {
+                    alert(`❌ 오류: ${result.error || '찬송가를 가져올 수 없습니다.'}`);
+                }
+            } catch (error) {
+                console.error('Error fetching hymn:', error);
+                alert('❌ 찬송가를 가져오는 중 오류가 발생했습니다. Reference 데이터가 설치되어 있는지 확인하세요.');
+            } finally {
+                // 버튼 다시 활성화
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
+
         // 레퍼런스 위치 선택
         function selectPosition(element, position) {
             const parent = element.parentElement;
             parent.querySelectorAll('.position-btn').forEach(btn => btn.classList.remove('active'));
             element.classList.add('active');
             parent.nextElementSibling.value = position;
+        }
+
+        // 성경 본문 자동 가져오기
+        async function fetchScripture(button) {
+            const scriptureDiv = button.closest('.scripture-card');
+            const referenceInput = scriptureDiv.querySelector('.scripture-reference');
+            const textArea = scriptureDiv.querySelector('.scripture-text');
+            const reference = referenceInput.value.trim();
+
+            if (!reference) {
+                alert('성경 참조를 입력해주세요 (예: 출24:12-18)');
+                return;
+            }
+
+            // 버튼 비활성화 및 로딩 표시
+            button.disabled = true;
+            const originalText = button.textContent;
+            button.textContent = '⏳ 가져오는 중...';
+
+            try {
+                const response = await fetch(`${API_URL}/fetch-scripture`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ reference })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // 본문 텍스트 영역에 자동 입력
+                    textArea.value = result.text;
+                    textArea.style.borderColor = '#10b981';  // 초록색
+
+                    // 성공 메시지
+                    showToast('✅ 성경 본문을 가져왔습니다!', 'success');
+
+                    // 2초 후 테두리 색상 원래대로
+                    setTimeout(() => {
+                        textArea.style.borderColor = '';
+                    }, 2000);
+                } else {
+                    alert(`❌ 오류: ${result.error || '성경 본문을 가져올 수 없습니다.'}`);
+                }
+            } catch (error) {
+                console.error('Error fetching scripture:', error);
+                alert('❌ 성경 본문을 가져오는 중 오류가 발생했습니다. Reference 데이터가 설치되어 있는지 확인하세요.');
+            } finally {
+                // 버튼 다시 활성화
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
+
+        // 토스트 메시지 표시
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white font-medium z-50 ${
+                type === 'success' ? 'bg-green-500' :
+                type === 'error' ? 'bg-red-500' :
+                'bg-blue-500'
+            }`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            // 3초 후 제거
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.5s';
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
         }
 
         // 슬라이드 생성
@@ -374,8 +589,19 @@
                     }
                 });
 
-                if (scriptures.length === 0 && worshipOrders.length === 0) {
-                    throw new Error('최소 하나의 예배 순서 또는 성경 본문을 입력해주세요.');
+                // 찬송가 수집
+                const hymns = [];
+                document.querySelectorAll('#hymns-container .scripture-card').forEach(card => {
+                    const hymnNumber = parseInt(card.querySelector('.hymn-number').value);
+                    if (hymnNumber && hymnNumber >= 1 && hymnNumber <= 645) {
+                        hymns.push({
+                            hymn_number: hymnNumber
+                        });
+                    }
+                });
+
+                if (scriptures.length === 0 && worshipOrders.length === 0 && hymns.length === 0) {
+                    throw new Error('최소 하나의 예배 순서, 성경 본문, 또는 찬송가를 입력해주세요.');
                 }
 
                 // API 요청
@@ -384,6 +610,7 @@
                     date: document.getElementById('date').value,
                     worship_orders: worshipOrders,
                     scriptures: scriptures,
+                    hymns: hymns,
                     config: {
                         font_name: document.getElementById('font-name').value,
                         font_size: parseInt(document.getElementById('font-size').value),
