@@ -474,6 +474,42 @@ async def api_info():
         ]
     }
 
+@app.get("/debug-reference")
+async def debug_reference():
+    """Reference 폴더 구조 디버깅"""
+    import glob
+    backend_dir = os.path.dirname(__file__)
+    reference_dir = os.path.join(backend_dir, "Reference")
+
+    result = {
+        "backend_dir": backend_dir,
+        "reference_dir": reference_dir,
+        "reference_exists": os.path.exists(reference_dir),
+        "files_in_backend": [],
+        "files_in_reference": [],
+        "bible_folder": None,
+        "sample_files": []
+    }
+
+    # backend 디렉토리 파일 확인
+    if os.path.exists(backend_dir):
+        result["files_in_backend"] = os.listdir(backend_dir)[:20]
+
+    # Reference 디렉토리 확인
+    if os.path.exists(reference_dir):
+        result["files_in_reference"] = os.listdir(reference_dir)[:20]
+
+        # 개역개정 폴더 찾기
+        for item in os.listdir(reference_dir):
+            if '개역개정' in item or 'Bible' in item:
+                result["bible_folder"] = item
+                bible_path = os.path.join(reference_dir, item)
+                if os.path.exists(bible_path):
+                    result["sample_files"] = os.listdir(bible_path)[:10]
+                break
+
+    return result
+
 @app.get("/parse-bible-reference")
 async def parse_reference(reference: str, language: str = "korean"):
     """
