@@ -549,27 +549,51 @@ async def fetch_scripture(data: dict):
         if not reference:
             raise HTTPException(status_code=400, detail="Reference is required")
 
+        print(f"📖 성경 본문 요청: {reference}")
+
         # 성경 본문 로드
         loader = get_bible_loader()
+        print(f"   Bible loader path: {loader.bible_path}")
+        print(f"   Path exists: {os.path.exists(loader.bible_path) if loader.bible_path else False}")
+
         text = loader.load_scripture(reference)
 
         if text:
+            print(f"   ✅ 본문 로드 성공 ({len(text)} 글자)")
             return {
                 "success": True,
                 "reference": reference,
                 "text": text
             }
         else:
+            print(f"   ❌ 본문 로드 실패")
+            # 디버깅 정보 추가
+            backend_dir = os.path.dirname(__file__)
+            ref_dir = os.path.join(backend_dir, "Reference")
+            debug_info = {
+                "backend_dir": backend_dir,
+                "reference_dir": ref_dir,
+                "ref_exists": os.path.exists(ref_dir),
+                "loader_path": loader.bible_path,
+                "loader_path_exists": os.path.exists(loader.bible_path) if loader.bible_path else False
+            }
+            if os.path.exists(ref_dir):
+                debug_info["ref_contents"] = os.listdir(ref_dir)[:10]
+
             return {
                 "success": False,
                 "reference": reference,
-                "error": "해당 구절을 찾을 수 없습니다. Reference 데이터가 설치되어 있는지 확인하세요."
+                "error": "해당 구절을 찾을 수 없습니다. Reference 데이터가 설치되어 있는지 확인하세요.",
+                "debug": debug_info
             }
     except Exception as e:
+        print(f"   ❌ 오류 발생: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             "success": False,
             "reference": data.get("reference", ""),
-            "error": str(e)
+            "error": f"{type(e).__name__}: {str(e)}"
         }
 
 @app.post("/fetch-hymn")

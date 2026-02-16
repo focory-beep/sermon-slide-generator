@@ -90,40 +90,69 @@ class BibleLoader:
             성경 본문 텍스트, 실패시 None
         """
         try:
+            print(f"      [BibleLoader] 레퍼런스 파싱: {reference}")
+
             # 레퍼런스 파싱
             parsed = parse_bible_reference(reference, "korean")
             book_abbrev = parsed.get("book_abbrev")
             chapter = parsed.get("chapter")
             verses = parsed.get("verses")
 
+            print(f"      [BibleLoader] 파싱 결과: book={book_abbrev}, chapter={chapter}, verses={verses}")
+
             if not book_abbrev or not chapter:
+                print(f"      [BibleLoader] ❌ 파싱 실패: book_abbrev 또는 chapter가 없음")
                 return None
 
             # 구절 범위 파싱
             verse_start, verse_end = self._parse_verse_range(verses)
+            print(f"      [BibleLoader] 구절 범위: {verse_start}-{verse_end}")
 
             # 파일 경로 생성
             book_dir = BOOK_DIR_MAP.get(book_abbrev)
             if not book_dir:
+                print(f"      [BibleLoader] ❌ book_dir을 찾을 수 없음: {book_abbrev}")
                 return None
 
             file_abbrev = BOOK_ABBREV_FILE_MAP.get(book_abbrev, book_abbrev)
             file_name = f"{file_abbrev} {chapter}.md"
             file_path = os.path.join(self.bible_path, book_dir, file_name)
 
+            print(f"      [BibleLoader] 파일 경로: {file_path}")
+            print(f"      [BibleLoader] Bible path: {self.bible_path}")
+            print(f"      [BibleLoader] Bible path exists: {os.path.exists(self.bible_path) if self.bible_path else False}")
+
+            # Bible path 내용 확인
+            if self.bible_path and os.path.exists(self.bible_path):
+                contents = os.listdir(self.bible_path)[:10]
+                print(f"      [BibleLoader] Bible path 내용 (처음 10개): {contents}")
+
             # 파일 읽기
             if not os.path.exists(file_path):
+                print(f"      [BibleLoader] ❌ 파일이 존재하지 않음: {file_path}")
+
+                # 상위 디렉토리 확인
+                parent_dir = os.path.dirname(file_path)
+                if os.path.exists(parent_dir):
+                    print(f"      [BibleLoader] 상위 디렉토리 내용: {os.listdir(parent_dir)[:10]}")
+                else:
+                    print(f"      [BibleLoader] 상위 디렉토리도 존재하지 않음: {parent_dir}")
+
                 return None
 
+            print(f"      [BibleLoader] ✅ 파일 발견, 읽는 중...")
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
 
             # 구절 추출
             verses_text = self._extract_verses(content, verse_start, verse_end)
+            print(f"      [BibleLoader] ✅ 구절 추출 완료 ({len(verses_text) if verses_text else 0} 글자)")
             return verses_text
 
         except Exception as e:
-            print(f"Error loading scripture: {e}")
+            print(f"      [BibleLoader] ❌ 오류: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def _parse_verse_range(self, verses_str: Optional[str]) -> tuple:
