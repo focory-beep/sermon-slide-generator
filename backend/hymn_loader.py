@@ -20,12 +20,44 @@ class HymnLoader:
             current_dir = os.path.dirname(__file__)
             base_path = os.path.join(current_dir, "Reference")
 
-            # 새찬송가🎼 폴더 찾기
+            # 새찬송가🎼 폴더 찾기 (인코딩 문제 대응)
             if os.path.exists(base_path):
+                found = False
                 for item in os.listdir(base_path):
-                    if '새찬송가' in item and '🎼' in item:
-                        hymn_data_path = os.path.join(base_path, item)
+                    item_path = os.path.join(base_path, item)
+                    if not os.path.isdir(item_path):
+                        continue
+
+                    # 이름으로 검색
+                    if '찬송가' in item or '새찬송가' in item:
+                        hymn_data_path = item_path
+                        found = True
+                        print(f"[HymnLoader] 찬송가 폴더 발견: {item}")
                         break
+
+                # 내부 구조로 검색 (찬_001.md 같은 파일이 있는지)
+                if not found:
+                    for item in os.listdir(base_path):
+                        item_path = os.path.join(base_path, item)
+                        if not os.path.isdir(item_path):
+                            continue
+
+                        try:
+                            files = os.listdir(item_path)
+                            for file in files:
+                                if file.startswith('찬_') or '찬송가' in file:
+                                    hymn_data_path = item_path
+                                    found = True
+                                    print(f"[HymnLoader] 찬송가 폴더 발견 (구조): {item}")
+                                    break
+                            if found:
+                                break
+                        except:
+                            continue
+
+                if not found:
+                    hymn_data_path = base_path
+                    print(f"[HymnLoader] ⚠️ 찬송가 폴더를 찾을 수 없어 Reference를 기본 경로로 사용")
 
         self.hymn_path = hymn_data_path
 

@@ -68,14 +68,61 @@ class BibleLoader:
         if bible_data_path is None:
             # 기본 경로 설정 (backend/Reference/)
             current_dir = os.path.dirname(__file__)
-            bible_data_path = os.path.join(current_dir, "Reference")
+            reference_path = os.path.join(current_dir, "Reference")
 
-            # 개역개정📖 폴더 찾기
-            if os.path.exists(bible_data_path):
-                for item in os.listdir(bible_data_path):
-                    if '개역개정' in item and '📖' in item:
-                        bible_data_path = os.path.join(bible_data_path, item)
+            # 개역개정📖 폴더 찾기 (인코딩 문제 대응)
+            if os.path.exists(reference_path):
+                found = False
+                for item in os.listdir(reference_path):
+                    item_path = os.path.join(reference_path, item)
+                    if not os.path.isdir(item_path):
+                        continue
+
+                    # 방법 1: 이름으로 검색 ('개역개정' 또는 '성경')
+                    if '개역개정' in item or '성경' in item:
+                        bible_data_path = item_path
+                        found = True
+                        print(f"[BibleLoader] 성경 폴더 발견 (이름): {item}")
                         break
+
+                # 방법 2: 내부 구조로 검색 (01_창세기 폴더가 있는지)
+                if not found:
+                    for item in os.listdir(reference_path):
+                        item_path = os.path.join(reference_path, item)
+                        if not os.path.isdir(item_path):
+                            continue
+
+                        # 하위 폴더 확인
+                        try:
+                            subfolders = os.listdir(item_path)
+                            # 창세기 폴더 찾기
+                            for subfolder in subfolders:
+                                if subfolder.startswith('01_') or '창세기' in subfolder:
+                                    bible_data_path = item_path
+                                    found = True
+                                    print(f"[BibleLoader] 성경 폴더 발견 (구조): {item}")
+                                    break
+                            if found:
+                                break
+                        except:
+                            continue
+
+                # 방법 3: Reference 자체를 성경 폴더로 사용 (01_창세기가 바로 있는 경우)
+                if not found:
+                    try:
+                        ref_contents = os.listdir(reference_path)
+                        for item in ref_contents:
+                            if item.startswith('01_') or '창세기' in item:
+                                bible_data_path = reference_path
+                                found = True
+                                print(f"[BibleLoader] 성경 데이터가 Reference 루트에 있음")
+                                break
+                    except:
+                        pass
+
+                if not found:
+                    bible_data_path = reference_path
+                    print(f"[BibleLoader] ⚠️ 성경 폴더를 찾을 수 없어 Reference를 기본 경로로 사용")
 
         self.bible_path = bible_data_path
 

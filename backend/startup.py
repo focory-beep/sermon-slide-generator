@@ -106,10 +106,35 @@ def download_reference_data():
             if len(items_in_ref) > 10:
                 print(f"   ... 외 {len(items_in_ref) - 10}개")
 
-            # 성경/찬송가 폴더 확인
+            # 성경/찬송가 폴더 확인 (인코딩 문제 대응)
             bible_found = False
             hymn_found = False
             for item in items_in_ref:
+                # 바이트로 변환해서 인코딩 문제 해결 시도
+                try:
+                    item_name = item.name
+                    # 여러 인코딩 방식 시도
+                    for encoding in ['utf-8', 'cp949', 'euc-kr', 'latin-1']:
+                        try:
+                            if isinstance(item_name, bytes):
+                                decoded = item_name.decode(encoding)
+                            else:
+                                decoded = item_name.encode('latin-1').decode(encoding)
+
+                            if '개역개정' in decoded or '성경' in decoded:
+                                bible_found = True
+                                print(f"   ✅ 성경 폴더 발견: {item.name} (인코딩: {encoding})")
+                                break
+                            if '찬송가' in decoded:
+                                hymn_found = True
+                                print(f"   ✅ 찬송가 폴더 발견: {item.name} (인코딩: {encoding})")
+                                break
+                        except:
+                            continue
+                except:
+                    pass
+
+                # 기본 검색
                 if '개역개정' in item.name or '성경' in item.name:
                     bible_found = True
                     print(f"   ✅ 성경 폴더 발견: {item.name}")
@@ -119,6 +144,20 @@ def download_reference_data():
 
             if not bible_found:
                 print("   ⚠️ 성경 폴더를 찾을 수 없습니다!")
+                print("   📁 Reference 폴더 내용을 다시 확인합니다...")
+                # 폴더 구조 분석
+                for item in items_in_ref:
+                    if item.is_dir():
+                        subdir_contents = list(item.iterdir())[:5]
+                        print(f"      - {item.name}/ ({len(list(item.iterdir()))}개 항목)")
+                        if subdir_contents:
+                            print(f"        내부: {[x.name for x in subdir_contents]}")
+
+                        # 창세기 폴더 찾기 (숫자로 시작하는 폴더)
+                        if item.name.startswith('01_') or item.name.startswith('1_') or '창세기' in item.name:
+                            bible_found = True
+                            print(f"   ✅ 성경 폴더 발견 (번호 기반): {item.name}")
+
             if not hymn_found:
                 print("   ⚠️ 찬송가 폴더를 찾을 수 없습니다!")
 
