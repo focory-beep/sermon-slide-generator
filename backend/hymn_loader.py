@@ -35,7 +35,8 @@ class HymnLoader:
                         print(f"[HymnLoader] 찬송가 폴더 발견: {item}")
                         break
 
-                # 내부 구조로 검색 (찬_001.md 같은 파일이 있는지)
+                # 내부 구조로 검색 (인코딩 깨져도 작동)
+                # 600개 이상 파일이 있는 폴더 = 찬송가 폴더 (645개)
                 if not found:
                     for item in os.listdir(base_path):
                         item_path = os.path.join(base_path, item)
@@ -44,12 +45,29 @@ class HymnLoader:
 
                         try:
                             files = os.listdir(item_path)
-                            for file in files:
-                                if file.startswith('찬_') or '찬송가' in file:
-                                    hymn_data_path = item_path
-                                    found = True
-                                    print(f"[HymnLoader] 찬송가 폴더 발견 (구조): {item}")
-                                    break
+                            file_count = len(files)
+
+                            # 600개 이상 파일 = 찬송가!
+                            if file_count >= 600:
+                                hymn_data_path = item_path
+                                found = True
+                                print(f"[HymnLoader] ✅ 찬송가 폴더 발견 (파일 수): {item} ({file_count}개)")
+                                break
+
+                            # 또는 _숫자.md 형식 파일이 있는지 확인
+                            for file in files[:10]:  # 처음 10개만 확인
+                                # "_123.md" 형식 찾기
+                                if '_' in file and file.endswith('.md'):
+                                    parts = file.split('_')
+                                    if len(parts) >= 2:
+                                        try:
+                                            int(parts[-1].replace('.md', ''))
+                                            hymn_data_path = item_path
+                                            found = True
+                                            print(f"[HymnLoader] ✅ 찬송가 폴더 발견 (파일 형식): {item}")
+                                            break
+                                        except:
+                                            continue
                             if found:
                                 break
                         except:
@@ -84,27 +102,31 @@ class HymnLoader:
             if not self.hymn_path or not os.path.exists(self.hymn_path):
                 return None
 
-            # 찬송가 파일 찾기 (여러 형식 시도)
-            possible_patterns = [
-                f"찬_{hymn_number:03d}.md",  # 찬_001.md
-                f"찬송가_{hymn_number}.md",   # 찬송가_1.md
-                f"{hymn_number}.md",          # 1.md
-                f"새찬송가_{hymn_number}.md", # 새찬송가_1.md
-            ]
-
+            # 찬송가 파일 찾기 (번호 기반, 인코딩 무관)
             hymn_file = None
-            for pattern in possible_patterns:
-                test_path = os.path.join(self.hymn_path, pattern)
-                if os.path.exists(test_path):
-                    hymn_file = test_path
-                    break
 
-            # 디렉토리 내 검색
-            if not hymn_file and os.path.isdir(self.hymn_path):
-                for item in os.listdir(self.hymn_path):
-                    if str(hymn_number) in item and item.endswith('.md'):
-                        hymn_file = os.path.join(self.hymn_path, item)
-                        break
+            if os.path.isdir(self.hymn_path):
+                # 파일 목록 가져오기
+                files = os.listdir(self.hymn_path)
+
+                # "_123.md" 형식으로 번호 찾기
+                for file in files:
+                    if not file.endswith('.md'):
+                        continue
+
+                    # 파일명에서 번호 추출
+                    try:
+                        # "_123.md" → 123
+                        if '_' in file:
+                            number_part = file.split('_')[-1].replace('.md', '')
+                            file_number = int(number_part)
+
+                            if file_number == hymn_number:
+                                hymn_file = os.path.join(self.hymn_path, file)
+                                print(f"[HymnLoader] ✅ 찬송가 파일 발견: {file}")
+                                break
+                    except:
+                        continue
 
             if not hymn_file or not os.path.exists(hymn_file):
                 return None
