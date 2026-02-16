@@ -155,39 +155,61 @@ class BibleLoader:
             verse_start, verse_end = self._parse_verse_range(verses)
             print(f"      [BibleLoader] 구절 범위: {verse_start}-{verse_end}")
 
-            # 파일 경로 생성
+            # 파일 경로 생성 (번호 기반)
             book_dir = BOOK_DIR_MAP.get(book_abbrev)
             if not book_dir:
                 print(f"      [BibleLoader] ❌ book_dir을 찾을 수 없음: {book_abbrev}")
                 return None
 
-            file_abbrev = BOOK_ABBREV_FILE_MAP.get(book_abbrev, book_abbrev)
-            file_name = f"{file_abbrev} {chapter}.md"
-            file_path = os.path.join(self.bible_path, book_dir, file_name)
-
-            print(f"      [BibleLoader] 파일 경로: {file_path}")
-            print(f"      [BibleLoader] Bible path: {self.bible_path}")
-            print(f"      [BibleLoader] Bible path exists: {os.path.exists(self.bible_path) if self.bible_path else False}")
+            # 책 번호 추출 (예: "01_창세기" → "01")
+            book_number = book_dir.split('_')[0]
+            print(f"      [BibleLoader] 찾을 책 번호: {book_number}")
 
             # Bible path 내용 확인
             if self.bible_path and os.path.exists(self.bible_path):
-                contents = os.listdir(self.bible_path)[:10]
-                print(f"      [BibleLoader] Bible path 내용 (처음 10개): {contents}")
+                contents = os.listdir(self.bible_path)
+                print(f"      [BibleLoader] Bible path 내용 (처음 10개): {contents[:10]}")
 
-            # 파일 읽기
-            if not os.path.exists(file_path):
-                print(f"      [BibleLoader] ❌ 파일이 존재하지 않음: {file_path}")
+                # 번호로 폴더 찾기
+                target_folder = None
+                for folder in contents:
+                    if folder.startswith(f"{book_number}_"):
+                        target_folder = folder
+                        print(f"      [BibleLoader] ✅ 폴더 발견 (번호): {folder}")
+                        break
 
-                # 상위 디렉토리 확인
-                parent_dir = os.path.dirname(file_path)
-                if os.path.exists(parent_dir):
-                    print(f"      [BibleLoader] 상위 디렉토리 내용: {os.listdir(parent_dir)[:10]}")
-                else:
-                    print(f"      [BibleLoader] 상위 디렉토리도 존재하지 않음: {parent_dir}")
+                if not target_folder:
+                    print(f"      [BibleLoader] ❌ {book_number}_ 로 시작하는 폴더를 찾을 수 없음")
+                    return None
 
+                # 폴더 안에서 파일 찾기
+                folder_path = os.path.join(self.bible_path, target_folder)
+                if not os.path.exists(folder_path):
+                    print(f"      [BibleLoader] ❌ 폴더가 존재하지 않음: {folder_path}")
+                    return None
+
+                folder_files = os.listdir(folder_path)
+                print(f"      [BibleLoader] 폴더 내용 (처음 10개): {folder_files[:10]}")
+
+                # 장 번호로 파일 찾기 (예: " 1.md", "_1.md", "1.md" 등)
+                target_file = None
+                for file in folder_files:
+                    if file.endswith(f" {chapter}.md") or file.endswith(f"_{chapter}.md") or file == f"{chapter}.md":
+                        target_file = file
+                        print(f"      [BibleLoader] ✅ 파일 발견 (번호): {file}")
+                        break
+
+                if not target_file:
+                    print(f"      [BibleLoader] ❌ 장 {chapter}에 해당하는 파일을 찾을 수 없음")
+                    print(f"      [BibleLoader] 찾은 파일들: {[f for f in folder_files if f.endswith('.md')][:10]}")
+                    return None
+
+                file_path = os.path.join(folder_path, target_file)
+            else:
+                print(f"      [BibleLoader] ❌ Bible path가 존재하지 않음")
                 return None
 
-            print(f"      [BibleLoader] ✅ 파일 발견, 읽는 중...")
+            print(f"      [BibleLoader] ✅ 최종 파일 경로: {file_path}")
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
 
